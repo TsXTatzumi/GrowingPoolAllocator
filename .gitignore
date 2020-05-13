@@ -1,4 +1,6 @@
 *.vcxproj
+*.vcxproj.filters
+*.sln
 
 ## Form https://raw.githubusercontent.com/github/VisualStudio/master/.gitignore
 

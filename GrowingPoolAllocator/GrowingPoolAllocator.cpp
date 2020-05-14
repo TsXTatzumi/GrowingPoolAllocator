@@ -1,31 +1,24 @@
 #include "GrowingPoolAllocator.h"
 
-#include <cstdlib>
-
-
-GrowingPoolAllocator::GrowingPoolAllocator(size_t poolSize, char elemSize) : poolSize(poolSize), elemSize(elemSize)
+GrowingPoolAllocator::GrowingPoolAllocator(size_t elementSize, size_t maxElements, size_t elementsPerBlock) 
+:mElementSize(elementSize), mMaxElements(maxElements), mElementsPerBlock(elementsPerBlock)
 {
-	pools = new void* [MAX_SIZE / poolSize];
+	if (mElementSize < sizeof(element)) {
+		//throwException();
+	}
 
-	pools[0] = malloc(poolSize);
+	if (mElementsPerBlock == 0) {
+		//throwException();
+	}
+
+	mMaxBlocks = mMaxElements / mElementsPerBlock;
+	if ((mMaxElements % mElementsPerBlock) != 0) {
+		mMaxBlocks++;
+	}
 }
 
-template<typename T>
-inline T* GrowingPoolAllocator::alloc(T& data)
-{
-	if(sizeof(T) > elemSize)
-	{
-		return nullptr;
+GrowingPoolAllocator::~GrowingPoolAllocator() {
+	for (auto block : mBlocks) {
+		delete[] (char*)block;
 	}
-
-	T* ptr = first_free_element;
-
-	if (ptr != nullptr)
-	{
-		first_free_element = first_free_element->next;
-
-		*ptr = data;
-	}
-	
-	return ptr;
 }

@@ -25,7 +25,26 @@ private:
 	const size_t mElementsPerBlock;
 	size_t mMaxBlocks;
 	std::vector<void*> mBlocks;
-	element* mFreeList = nullptr;
+	std::vector<size_t> mElementsUsedPerBlock;
+	element* mFreeList = nullptr; // root for alloc order == next position
+
+	template<typename T>
+	int getBlockNr(const T* ptr) {
+
+		int blockNr = -1;
+		for (int b = 0; b < mBlocks.size(); b++) {
+			if ((int)ptr < (int)mBlocks[b] || (int)ptr >= (int)mBlocks[b] + mElementsPerBlock * mElementSize) {
+				continue;
+			}
+			for (int e = 0; e < mElementsPerBlock; e++) {
+				if ((int)mBlocks[b] + e * mElementSize == (int)ptr) {
+					blockNr = b;
+					break;
+				}
+			}
+		}
+		return blockNr;
+	}
 };
 
 template<typename T, typename... args>
@@ -45,6 +64,8 @@ T* GrowingPoolAllocator::alloc(args... arguments) {
 		}
 
 		mBlocks.push_back(block);
+		mElementsUsedPerBlock.push_back(0);
+
 		mFreeList = (element*)block;
 		for (size_t i = 0; i < mElementsPerBlock; ++i) {
 			element* current = ((element*)((uintptr_t)block + (mElementSize * i)));
@@ -59,6 +80,7 @@ T* GrowingPoolAllocator::alloc(args... arguments) {
 	}
 
 	void* elem = mFreeList;
+	mElementsUsedPerBlock[getBlockNr(elem)]++;
 	mFreeList = mFreeList->next;
 
 	return new (elem) T(arguments...);
@@ -70,13 +92,51 @@ void GrowingPoolAllocator::free(const T* ptr) {
 		return;
 	}
 
-	//check if pointer is inside one of our blocks
-	//if not throw exception
 
+	//check if pointer is inside one of our blocks
+	int blockNr = getBlockNr(ptr);
+	if (blockNr < 0) {
+		//if not throw exception
+		return;
+	}
+	
 	ptr->~T();
-	element* tmp = (element*)ptr;
-	tmp->next = mFreeList;
-	mFreeList = tmp;
+	element* current = (element*)ptr;
+	current->next = mFreeList;
+	mFreeList = current; // root
+
+	
+	mElementsUsedPerBlock[blockNr]--;
+	if (mElementsUsedPerBlock[blockNr] == 0) {
+		// remove all elements of the block (except the root)
+
+		element* next = current->next; // current is root right now
+		while (true) {
+			if (next == nullptr) {
+				break;
+			}
+
+			if (getBlockNr(next) == blockNr) {
+				// keep current & remove next
+				current->next = next->next;
+				next = current->next;
+			}
+			else {
+				// move both over by one
+				current = current->next;
+				next = current->next;
+			}
+		}
+
+		// remove the root (its the last element in the block)
+		mFreeList = mFreeList->next;
+
+		// finally remove the block
+		auto block = mBlocks[blockNr];
+		mBlocks.erase(mBlocks.begin() + blockNr);
+		mElementsUsedPerBlock.erase(mElementsUsedPerBlock.begin() + blockNr);
+		delete[](char*)block;
+	}
 }
 
 #endif

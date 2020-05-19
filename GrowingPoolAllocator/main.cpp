@@ -1,5 +1,6 @@
 #include <iostream>
 #include "GrowingPoolAllocator.h"
+// Maxi, Flo, Simeon, Nadine
 
 struct testStruct{
     int test1;
@@ -11,16 +12,17 @@ struct testStruct{
 
 int main()
 {
-    GrowingPoolAllocator gpa(sizeof(int), 1000, 17);
+    int numberOfelements = 1000;
+    GrowingPoolAllocator gpa(sizeof(int), numberOfelements, 17);
     std::vector<int*> allocatedStuff;
 
-    for (int i = 0; i < 1000; ++i) {
+    for (int i = 0; i < numberOfelements; ++i) {
         allocatedStuff.push_back(gpa.alloc<int>(i));
     }
 
     std::cout << "First Test:" << std::endl;
 
-    for (int i = 0; i < 1000; ++i) {
+    for (int i = 0; i < numberOfelements; ++i) {
         if (*allocatedStuff[i] != i) {
             std::cerr << "unexpeted value at position: " << i << std::endl;
         }
@@ -29,7 +31,7 @@ int main()
 
     std::cout << "Second Test:" << std::endl;
 
-    for (int i = 0; i < 1000; ++i) {
+    for (int i = 0; i < numberOfelements; ++i) {
         if (*allocatedStuff[i] != -i) {
             std::cerr << "unexpeted value at position: " << i << std::endl;
         }
@@ -38,13 +40,13 @@ int main()
 
     allocatedStuff.clear();
 
-    for (int i = 0; i < 1000; ++i) {
+    for (int i = 0; i < numberOfelements; ++i) {
         allocatedStuff.push_back(gpa.alloc<int>());
     }
 
     std::cout << "Third Test:" << std::endl;
 
-    for (int i = 0; i < 1000; ++i) {
+    for (int i = 0; i < numberOfelements; ++i) {
         if (*allocatedStuff[i] != 0) {
             std::cerr << "unexpeted value at position: " << i << std::endl;
         }
@@ -79,6 +81,15 @@ int main()
 
     std::cout << "Sixth Test:" << std::endl;
 
+    for (int i = 0; i < numberOfelements; ++i) {
+        if (*allocatedStuff[i] != 0) {
+            std::cerr << "unexpeted value at position: " << i << std::endl;
+        }
+        gpa.free(allocatedStuff[i]);
+    }
+
+    std::cout << "Seventh Test:" << std::endl;
+
     for (int i = 0; i < 456; ++i) {
         if (allocatedStuff2[i]->test1 != -i) {
             std::cerr << "unexpeted value at position: " << i << std::endl;
@@ -86,7 +97,7 @@ int main()
         gpa2.free(allocatedStuff2[i]);
     }
 
-    std::cout << "Seventh Test:" << std::endl;
+    std::cout << "Eight Test:" << std::endl;
 
     for (int i = 0; i < 456; ++i) {
         if (*allocatedStuff3[i] != (i / -10000.0L)) {
